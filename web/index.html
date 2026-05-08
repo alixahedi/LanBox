@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LanBox</title>
+
+    <meta name="theme-color" content="#0f172a">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/png" href="/icons/icon-192.png">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<header class="topbar">
+    <div class="brand">
+        <div class="logo">LB</div>
+        <div>
+            <h1>LanBox</h1>
+            <p>Fast LAN file sharing</p>
+        </div>
+    </div>
+
+    <button id="themeToggle" class="theme-toggle" type="button" aria-label="Toggle theme" title="Toggle theme">
+        🌙
+    </button>
+</header>
+
+<main class="container">
+    <section class="grid">
+        <div class="card">
+
+            <div class="card-header">
+                <h2>File Sharing</h2>
+                <p>Upload any file to share it on your local network.</p>
+            </div>
+
+            <div id="dropZone" class="dropZone">
+                <div class="uploadIcon">⬆</div>
+                <h3>Drag & Drop files here</h3>
+                <p>or use the button below</p>
+
+                <button id="selectBtn" class="primary-btn" type="button">
+                    Choose File
+                </button>
+
+                <input id="fileInput" type="file" hidden>
+            </div>
+
+            <div id="uploadStatus" class="uploadStatus"></div>
+
+            <div class="section-title">
+                <h3>Uploaded Files</h3>
+            </div>
+
+            <div id="fileList" class="fileList"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2>Notes Wall</h2>
+                <p>Quick shared notes for your LAN.</p>
+            </div>
+
+            <div class="note-form">
+                <input id="noteInput" type="text" placeholder="Write a note...">
+                <button id="addNoteBtn" class="primary-btn" type="button">
+                    Add Note
+                </button>
+            </div>
+
+            <div id="notesGrid" class="notesGrid"></div>
+        </div>
+    </section>
+</main>
+
+<div id="toast" class="toast"></div>
+
+<footer class="footer">
+    made by 
+    <a href="https://github.com/alixahedi" target="_blank" rel="noreferrer">
+        Ali Zahedi
+    </a>
+</footer>
+
+<script src="/app.js"></script>
+</body>
+</html>
