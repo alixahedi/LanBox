@@ -35,7 +35,7 @@ body{
     background: linear-gradient(180deg, var(--bg) 0%, var(--bg-soft) 100%);
     color: var(--text);
     min-height: 100vh;
-    padding-top: 86px;
+    padding-top: 0px;
 }
 
 a{
@@ -52,7 +52,7 @@ a{
     -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
     background: rgba(255,255,255,0.02);
-    position: fixed;
+    position: fix;
     top: 0;
     left: 0;
     right: 0;
@@ -66,16 +66,21 @@ a{
     gap: 14px;
 }
 
-.logo{
+.logo {
     width: 46px;
     height: 46px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.logo img {
+    width: 100%;
+    height: 100%;
     border-radius: 14px;
-    display: grid;
-    place-items: center;
-    background: linear-gradient(135deg, var(--primary), #7c5cff);
-    color: white;
-    font-weight: 700;
-    box-shadow: var(--shadow);
+    object-fit: cover; /* اگر می‌خواهی کل باکس را پر کند */
+    display: block;
 }
 
 .brand h1{
@@ -362,26 +367,23 @@ a{
     }
 
     .topbar{
-        flex-direction: column;
-        align-items: flex-start;
-        padding: 16px;
-        gap: 12px;
-        /* Mobile browsers can glitch fixed + blur while scrolling */
-        -webkit-backdrop-filter: none;
-        backdrop-filter: none;
-        background: var(--bg-soft);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        padding: 20px;
     }
 
     .theme-toggle{
         width: 42px;
         height: 42px;
-        align-self: flex-end;
+        align-self: center;
     }
 }
 
 @media (max-width: 640px){
     body{
-        padding-top: 110px;
+        padding-top: 0px;
     }
 
     .container{
@@ -389,7 +391,7 @@ a{
     }
 
     .topbar{
-        position: fixed;
+        position: fix;
         top: 0;
         left: 0;
         right: 0;
