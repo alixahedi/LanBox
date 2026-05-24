@@ -1,166 +1,171 @@
-# 📦 LanBox - Fast LAN File Sharing
+# LanBox
 
 ![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
 ![Framework](https://img.shields.io/badge/Framework-Flask-black)
 ![Platform](https://img.shields.io/badge/Platform-Web%20%2B%20LAN-lightgrey)
-![Dependency](https://img.shields.io/badge/Dependency-zeroconf-orange)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-LanBox is a lightweight local network tool for sharing files and notes between devices on the same LAN.
+LanBox is a lightweight LAN app for sharing files, notes, and chat between devices on the same local network. Run the server on one machine, then connect from any phone, tablet, or PC in the browser.
 
-It provides a clean web interface, drag-and-drop uploads, and mDNS discovery support (`lanbox.local`) for easier access on your network.
-
----
-
-## 🎯 Purpose of This Project
-
-This project is designed for:
-
-- Fast file sharing on local networks
-- Sharing quick notes between devices
-- Running a zero-cloud, local-first transfer tool
-- Simple self-hosted setup with Python + Flask
-
-If you need a quick local sharing box without third-party services, LanBox keeps everything on your own network.
+No cloud account required. Data stays on your network.
 
 ---
 
-## ✨ Features
+## Features
 
-- Responsive web UI (desktop + mobile)
-- Drag-and-drop file upload
-- Direct file download and delete
-- Shared notes wall (add, copy, delete)
-- Light/Dark theme toggle
-- Auto-refresh for files and notes
-- mDNS announcement with Zeroconf
-- Supports large uploads (up to 5GB)
-
----
-
-## 📁 Project Structure
-
-- `server.py` - Flask backend and API routes
-- `web/index.html` - main UI page
-- `web/style.css` - app styling and responsive layout
-- `web/app.js` - frontend logic for uploads, notes, and polling
-- `web/manifest.json` - PWA metadata
-- `web/service-worker.js` - service worker
-- `lanbox.bat` - Windows auto-setup and run script
-- `lanbox-background.bat` - background runner loop (no console)
-- `lanbox-startup.vbs` - hidden launcher for startup
-- `install-startup.bat` - install Windows Startup shortcut
-- `remove-startup.bat` - remove Windows Startup shortcut
-- `requirements.txt` - Python dependencies
-- `data/notes.json` - persisted notes
-- `files/` - uploaded files storage directory
+- **Web UI** — works on desktop, phone, and tablet
+- **File sharing** — drag-and-drop upload, download, delete
+- **Password-protected files** — encrypted in the browser before upload
+- **Broadcast chat** — message everyone on the LAN
+- **Private messages** — end-to-end encrypted (Web Crypto on HTTPS/localhost)
+- **Shared notes wall** — quick sticky notes for the LAN
+- **Online users** — live presence via WebSocket
+- **System notifications** — alerts for new files and messages (HTTPS)
+- **Themes** — light and dark mode
+- **PWA-friendly** — installable from the browser with a service worker
+- **mDNS discovery** — optional local discovery when supported
 
 ---
 
-## 🧰 Requirements
+## Quick start
 
-- Python 3.8+
-- pip
-
-Install dependencies:
+### 1. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
----
+On Windows, you can double-click `lanbox.bat` to install dependencies and start the server.
 
-## 🚀 Installation & Run
-
-From project root:
+### 2. Start the server (host device)
 
 ```bash
 python server.py
 ```
 
-Or on Windows (auto install + auto restart):
+The server starts with **HTTPS by default**, for example:
+
+```
+https://192.168.1.10:3000
+```
+
+Share that address with other devices on the same Wi‑Fi or LAN.
+
+### 3. Connect from other devices
+
+1. Open the **HTTPS** URL in Chrome, Edge, or Safari.
+2. Accept the self-signed certificate warning (one time per device).
+3. Choose a username — it is saved on that device.
+4. Click **Enable** on the notification banner if you want system alerts.
+
+---
+
+## HTTPS and notifications
+
+Chrome blocks system notifications on plain `http://192.168.x.x` addresses. LanBox generates a self-signed certificate automatically (stored in `certs/` on first run) so notifications can work on your LAN IP.
+
+| URL | Notifications |
+|-----|----------------|
+| `https://192.168.x.x:3000` | Supported (accept cert warning first) |
+| `http://localhost:3000` | Supported |
+| `http://192.168.x.x:3000` | Blocked by Chrome |
+
+To run HTTP only (not recommended):
 
 ```bash
-lanbox.bat
+python server.py --no-https
 ```
 
-Then open:
-
-- `http://localhost:3000`
-- `http://lanbox.local:3000` (when mDNS is available on your network)
-
 ---
 
-## 🪟 Run on Windows Startup (Background)
+## Server options
 
-LanBox includes scripts to auto-start in the background when you log in to Windows.
-
-### One-time setup
-
-From project root, run:
-
-```bat
-install-startup.bat
+```bash
+python server.py                  # HTTPS on port 3000 (default)
+python server.py --port 8080      # Custom port
+python server.py --no-mdns        # Disable mDNS registration
+python server.py --no-https       # HTTP only
+python server.py --host 0.0.0.0   # Listen on all interfaces (default)
 ```
 
-This creates a Startup shortcut that launches LanBox hidden on each login.
+Environment variables:
 
-### How it works
+- `LANBOX_PORT` — port number
+- `LANBOX_HTTPS` — `1` or `0`
+- `LANBOX_SECRET` — Flask session secret (optional)
 
-- `lanbox-background.bat` runs `pythonw server.py` in a restart loop
-- `lanbox-startup.vbs` starts it with no visible console window
-- `install-startup.bat` adds a Startup shortcut automatically
+---
 
-### Remove auto-start
+## Windows helpers
 
-If you want to disable startup:
+| Script | Purpose |
+|--------|---------|
+| `lanbox.bat` | Install deps and run the server (auto-restart on crash) |
+| `install-startup.bat` | Add LanBox to Windows startup |
+| `remove-startup.bat` | Remove from Windows startup |
+| `lanbox-background.bat` | Run server in the background |
 
-```bat
-remove-startup.bat
+---
+
+## Project structure
+
+```
+LanBox/
+├── server.py           # Flask + Socket.IO backend
+├── ssl_certs.py        # Self-signed HTTPS certificate generation
+├── paths.py            # Runtime directory paths
+├── requirements.txt    # Python dependencies
+├── lanbox.bat          # Windows launcher
+├── web/                # Frontend (HTML, CSS, JS)
+│   ├── app.js          # Main UI logic
+│   ├── crypto.js       # E2E chat & file encryption
+│   └── service-worker.js
+├── files/              # Uploaded files (created at runtime)
+├── data/               # Users, notes, messages (created at runtime)
+└── certs/              # Auto-generated TLS cert (created at runtime)
 ```
 
-### Important
+---
 
-- Keep this project folder in a fixed path after installing startup.
-- If you move the folder, run `remove-startup.bat` then `install-startup.bat` again.
+## API overview
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/server/info` | Server IP, port, and URL |
+| `POST` | `/api/users/register` | Register username and public key |
+| `GET` | `/api/users/online` | List online users |
+| `GET` | `/api/chat/broadcast/history` | Broadcast message history |
+| `POST` | `/api/chat/broadcast/send` | Send a broadcast message |
+| `GET` | `/api/chat/history` | Private message history |
+| `POST` | `/api/chat/send` | Send an encrypted private message |
+| `POST` | `/api/chat/delete-mine` | Delete all messages for a user |
+| `POST` | `/api/upload` | Upload a file |
+| `GET` | `/api/files` | List uploaded files |
+| `GET` | `/api/notes` | List shared notes |
+
+Live updates also use Socket.IO events: `broadcast_message`, `chat_message`, `file_uploaded`, `online_users`.
 
 ---
 
-## 🔌 API Overview
+## Security notes
 
-- `POST /api/upload` - upload a file
-- `GET /api/files` - list uploaded files
-- `POST /api/delete-file` - delete file by filename
-- `GET /download/<filename>` - download a file
-- `GET /api/notes` - list notes
-- `POST /api/notes/add` - add note
-- `POST /api/notes/delete` - delete note by id
+LanBox is designed for **trusted local networks** (home Wi-Fi, lab, office). It does not provide user authentication beyond choosing a username.
 
----
+- Usernames are stored per device in browser `localStorage`.
+- Full E2E chat encryption works on HTTPS or localhost.
+- On plain HTTP LAN, chat and file encryption use a compatible fallback so phones can still connect.
+- Anyone on the network who knows the server address can join.
 
-## 🛡️ Notes
-
-- LanBox is intended for trusted local networks.
-- Uploaded files are saved directly in `files/`.
-- Notes are persisted in `data/notes.json`.
-- Filenames are sanitized on upload for safer file handling.
+Do not expose LanBox directly to the public internet without additional hardening.
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
-Contributions are welcome. Suggested workflow:
-
-1. Fork the repository
-2. Create a feature branch
-3. Open a pull request
-
-Read contribution details in `CONTRIBUTING.md`.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and pull request guidelines.
 
 ---
 
-## 📄 License
+## License
 
-This project is licensed under the MIT License.
-See `LICENSE` for full text.
-
+MIT License — see [LICENSE](LICENSE).

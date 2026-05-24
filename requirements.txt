@@ -1,3 +1,7 @@
 Flask==3.0.3
 Werkzeug==3.0.3
 zeroconf==0.132.2
+flask-socketio==5.3.6
+python-socketio==5.11.0
+cryptography>=42.0.0
+eventlet>=0.35.0

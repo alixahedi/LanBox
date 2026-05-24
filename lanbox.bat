@@ -8,7 +8,7 @@ echo =========================
 
 echo Installing Python packages...
 python -m pip install --upgrade pip
-python -m pip install flask werkzeug zeroconf
+python -m pip install -r requirements.txt
 
 echo.
 echo Starting LanBox Server...
