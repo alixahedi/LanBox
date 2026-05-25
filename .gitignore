@@ -8,7 +8,6 @@ env/
 # Runtime app data
 files/
 data/
-certs/
 
 # Tooling and OS files
 .DS_Store

@@ -39,12 +39,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const usernameError   = document.getElementById("usernameError");
     const hostBanner      = document.getElementById("hostBanner");
     const hostAddress     = document.getElementById("hostAddress");
-    const notifBanner     = document.getElementById("notifBanner");
-    const notifBannerText = document.getElementById("notifBannerText");
-    const enableNotifBtn  = document.getElementById("enableNotifBtn");
-
-    const NOTIF_ICON = "/icons/icon-192.png";
-    let swRegistration = null;
 
     let filesHash   = "";
     let notesHash   = "";
@@ -63,24 +57,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let appInitialized = false;
     let serverInfo = null;
     let isAdmin = false;
-
-    function notifIconUrl() {
-        return new URL(NOTIF_ICON, location.origin).href;
-    }
-
-    function canUseSystemNotifications() {
-        return window.isSecureContext && "Notification" in window;
-    }
-
-    function getSecureServerUrl() {
-        if (serverInfo && serverInfo.url) {
-            return serverInfo.scheme === "https"
-                ? serverInfo.url
-                : `https://${serverInfo.ip}:${serverInfo.port}`;
-        }
-        const port = location.port || "3000";
-        return `https://${location.hostname}:${port}`;
-    }
+    let unreadPM = {};
 
     function getStoredUsername() {
         return localStorage.getItem(USERNAME_KEY) || "";
@@ -99,119 +76,26 @@ document.addEventListener("DOMContentLoaded", () => {
         window._toast = setTimeout(() => { toast.className = "toast"; }, 2500);
     }
 
-    async function registerServiceWorker() {
-        if (!("serviceWorker" in navigator)) return null;
-        try {
-            swRegistration = await navigator.serviceWorker.register("/service-worker.js", { scope: "/" });
-            await navigator.serviceWorker.ready;
-            return swRegistration;
-        } catch (e) {
-            console.warn("Service worker registration failed:", e);
-            return null;
-        }
+    function getUnreadCount(username) {
+        return unreadPM[username] || 0;
     }
 
-    async function requestNotificationPermission() {
-        if (!canUseSystemNotifications()) return false;
-        if (Notification.permission === "granted") return true;
-        if (Notification.permission === "denied") return false;
-        const result = await Notification.requestPermission();
-        return result === "granted";
+    function incrementUnread(username) {
+        if (!username || username === currentUser) return;
+        unreadPM[username] = getUnreadCount(username) + 1;
+        renderOnline();
     }
 
-    function notificationsReady() {
-        return canUseSystemNotifications() && Notification.permission === "granted";
+    function clearUnread(username) {
+        if (!unreadPM[username]) return;
+        delete unreadPM[username];
+        renderOnline();
     }
 
-    function updateNotifBanner() {
-        if (!notifBanner) return;
-
-        if (!window.isSecureContext) {
-            const url = getSecureServerUrl();
-            if (notifBannerText) {
-                notifBannerText.textContent =
-                    "Chrome blocks notifications on HTTP. Open the HTTPS link and accept the certificate warning.";
-            }
-            if (enableNotifBtn) enableNotifBtn.textContent = "Open HTTPS";
-            notifBanner.classList.remove("hidden");
-            return;
-        }
-
-        if (!("Notification" in window)) {
-            if (notifBannerText) {
-                notifBannerText.textContent = "This browser does not support system notifications.";
-            }
-            if (enableNotifBtn) enableNotifBtn.classList.add("hidden");
-            notifBanner.classList.remove("hidden");
-            return;
-        }
-
-        if (Notification.permission === "granted") {
-            notifBanner.classList.add("hidden");
-            return;
-        }
-
-        if (enableNotifBtn) enableNotifBtn.classList.remove("hidden");
-
-        if (Notification.permission === "denied") {
-            if (notifBannerText) {
-                notifBannerText.textContent =
-                    "Notifications are blocked. Click the lock icon in the address bar → Site settings → Notifications → Allow.";
-            }
-            if (enableNotifBtn) enableNotifBtn.textContent = "Blocked";
-            notifBanner.classList.remove("hidden");
-            return;
-        }
-
-        if (notifBannerText) {
-            notifBannerText.textContent =
-                "Tap Enable and allow notifications — required for alerts on files and messages.";
-        }
-        if (enableNotifBtn) enableNotifBtn.textContent = "Enable";
-        notifBanner.classList.remove("hidden");
-    }
-
-    async function initNotifications() {
-        await registerServiceWorker();
-        updateNotifBanner();
-    }
-
-    async function notifyUser(title, body, tag = "lanbox-alert") {
-        const text = String(body || "").slice(0, 240);
-        const options = {
-            body: text,
-            icon: notifIconUrl(),
-            badge: notifIconUrl(),
-            tag,
-            renotify: true,
-            vibrate: [200, 100, 200],
-            silent: false,
-            data: { url: location.href },
-        };
-
-        if (!notificationsReady()) {
-            showToast(text, "info");
-            return false;
-        }
-
-        try {
-            const reg = swRegistration || (await navigator.serviceWorker.ready);
-            if (reg?.showNotification) {
-                await reg.showNotification(title, options);
-                return true;
-            }
-        } catch (e) {
-            console.warn("Service worker notification failed:", e);
-        }
-
-        try {
-            new Notification(title, options);
-            return true;
-        } catch (e) {
-            console.warn("Notification failed:", e);
-            showToast(text, "info");
-            return false;
-        }
+    function openPrivateChat(username) {
+        chatTarget.value = username;
+        chatTarget.dispatchEvent(new Event("change"));
+        clearUnread(username);
     }
 
     async function handleIncomingMessage(msg) {
@@ -223,12 +107,9 @@ document.addEventListener("DOMContentLoaded", () => {
             if (chatTarget.value === BROADCAST) {
                 appendBroadcastMessage(msg);
                 scrollChat();
+            } else {
+                showToast(`${msg.from_user}: ${msg.text}`, "info");
             }
-            await notifyUser(
-                "LanBox broadcast",
-                `${msg.from_user}: ${msg.text}`,
-                `broadcast-${msg.id}`
-            );
             return;
         }
 
@@ -236,15 +117,9 @@ document.addEventListener("DOMContentLoaded", () => {
             if (chatTarget.value === msg.from_user) {
                 await appendChatMessage(msg, false);
                 scrollChat();
+            } else {
+                incrementUnread(msg.from_user);
             }
-            let preview = "New private message";
-            try {
-                const peerKey = await getUserPublicKey(msg.from_user);
-                preview = await LanBoxCrypto.decryptMessage(
-                    msg.ciphertext, msg.iv, peerKey, keyPair.privateKeyB64, keyPair
-                );
-            } catch (_) {}
-            await notifyUser(`PM from ${msg.from_user}`, preview, `pm-${msg.id}`);
         }
     }
 
@@ -282,27 +157,6 @@ document.addEventListener("DOMContentLoaded", () => {
     themeToggle.addEventListener("click", () => {
         setTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark");
     });
-
-    if (enableNotifBtn) {
-        enableNotifBtn.addEventListener("click", async () => {
-            if (!window.isSecureContext) {
-                window.location.href = getSecureServerUrl();
-                return;
-            }
-            if (Notification.permission === "denied") {
-                showToast("Allow notifications in browser site settings (lock icon → Site settings)", "error");
-                return;
-            }
-            const ok = await requestNotificationPermission();
-            updateNotifBanner();
-            if (ok) {
-                await notifyUser("LanBox", "Notifications are working!", "lanbox-test");
-                showToast("System notifications enabled", "success");
-            } else {
-                showToast("Notifications blocked — enable in browser settings", "error");
-            }
-        });
-    }
 
     // ── User onboarding ──────────────────────────────────────
     function showUsernameModal(changingUser = false) {
@@ -373,7 +227,6 @@ document.addEventListener("DOMContentLoaded", () => {
             await ensureKeyPair();
             await registerOnServer(currentUser);
             saveUsername(currentUser);
-            await initNotifications();
             showUserUI();
             return true;
         } catch (e) {
@@ -402,7 +255,6 @@ document.addEventListener("DOMContentLoaded", () => {
             await registerOnServer(name);
             currentUser = name;
             saveUsername(name);
-            await initNotifications();
             hideUsernameModal();
             showUserUI();
             initApp();
@@ -440,7 +292,6 @@ document.addEventListener("DOMContentLoaded", () => {
             serverInfo = info;
             hostAddress.textContent = info.url || `${info.ip}:${info.port}`;
             hostBanner.classList.remove("hidden");
-            updateNotifBanner();
         } catch (_) {}
     }
 
@@ -449,7 +300,6 @@ document.addEventListener("DOMContentLoaded", () => {
         changeUserBtn.classList.remove("hidden");
         currentUsername.textContent = currentUser + (isAdmin ? " · admin" : "");
         loadHostBanner();
-        updateNotifBanner();
         connectSocket();
     }
 
@@ -478,11 +328,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (data.uploaded_by && data.uploaded_by === currentUser) return;
             knownFileNames.add(data.name);
             const name = data.original_name || data.name;
-            notifyUser(
-                "New file shared",
-                `${data.uploaded_by || "Someone"} uploaded ${name}`,
-                `file-${data.name}`
-            );
+            showToast(`${data.uploaded_by || "Someone"} uploaded ${name}`, "info");
             loadFiles();
         });
 
@@ -506,13 +352,17 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
         onlineUsers.forEach(name => {
+            const count = getUnreadCount(name);
             const li = document.createElement("li");
-            li.className = "online-user";
-            li.innerHTML = `<span class="status-dot online"></span> ${escapeHtml(name)}`;
-            li.addEventListener("click", () => {
-                chatTarget.value = name;
-                chatTarget.dispatchEvent(new Event("change"));
-            });
+            li.className = "online-user" + (count ? " has-unread" : "");
+            const badge = count
+                ? `<span class="unread-badge" title="Unread private messages">${count} message${count > 1 ? "s" : ""}</span>`
+                : "";
+            li.innerHTML = `
+              <span class="status-dot online"></span>
+              <span class="online-user-name">${escapeHtml(name)}</span>
+              ${badge}`;
+            li.addEventListener("click", () => openPrivateChat(name));
             onlineList.appendChild(li);
         });
     }
@@ -548,6 +398,7 @@ document.addEventListener("DOMContentLoaded", () => {
         chatInput.placeholder = isBroadcastMode()
             ? "Message everyone on the LAN…"
             : `Private message to ${chatTarget.value}…`;
+        if (!isBroadcastMode()) clearUnread(chatTarget.value);
         await loadCurrentChat();
     });
 
@@ -772,11 +623,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     const uploader = f.uploaded_by || "";
                     if (uploader && uploader !== currentUser) {
                         const label = f.original_name || f.name;
-                        notifyUser(
-                            "New file shared",
-                            `${uploader} uploaded ${label}`,
-                            `file-${name}`
-                        );
+                        showToast(`${uploader} uploaded ${label}`, "info");
                     }
                 }
             });
@@ -1006,13 +853,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // ── Boot ─────────────────────────────────────────────────
-    registerServiceWorker();
     fetch("/api/server/info")
         .then(r => r.json())
-        .then(info => {
-            serverInfo = info;
-            updateNotifBanner();
-        })
+        .then(info => { serverInfo = info; })
         .catch(() => {});
     (async () => {
         initTheme();

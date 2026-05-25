@@ -9,7 +9,6 @@ import os
 import json
 import uuid
 import socket
-import ssl
 import time
 import argparse
 import logging
@@ -19,7 +18,6 @@ from werkzeug.utils import secure_filename
 from zeroconf import Zeroconf, ServiceInfo, NonUniqueNameException
 
 from paths import web_dir, files_dir, data_dir
-from ssl_certs import ensure_certificates
 
 DEFAULT_PORT = 3000
 
@@ -31,11 +29,6 @@ class _SuppressWerkzeugSocketNoise(logging.Filter):
 
 logging.getLogger("werkzeug").addFilter(_SuppressWerkzeugSocketNoise())
 
-
-def build_ssl_context(cert_path, key_path):
-    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-    ctx.load_cert_chain(cert_path, key_path)
-    return ctx
 
 FILES_DIR = files_dir()
 DATA_DIR = data_dir()
@@ -201,17 +194,14 @@ def index():
 @app.route("/api/server/info")
 def server_info():
     port = int(os.environ.get("LANBOX_PORT", DEFAULT_PORT))
-    https_enabled = os.environ.get("LANBOX_HTTPS", "1") == "1"
-    scheme = "https" if https_enabled else "http"
     ip = get_local_ip()
     return jsonify({
         "name": "LanBox",
         "version": "2.0",
         "ip": ip,
         "port": port,
-        "scheme": scheme,
-        "url": f"{scheme}://{ip}:{port}",
-        "secureContextRequired": True,
+        "scheme": "http",
+        "url": f"http://{ip}:{port}",
     })
 
 
@@ -597,7 +587,7 @@ def on_user_join(data):
 # Zeroconf (mDNS)
 # -------------------------
 
-def register_mdns(port, scheme="https"):
+def register_mdns(port, scheme="http"):
     ip = get_local_ip()
     machine = socket.gethostname().replace(" ", "-")[:32]
     service_name = f"LanBox-{machine}-{port}._http._tcp.local."
@@ -626,39 +616,23 @@ def register_mdns(port, scheme="https"):
         return None
 
 
-def run_server(host="0.0.0.0", port=DEFAULT_PORT, use_mdns=True, use_https=True):
+def run_server(host="0.0.0.0", port=DEFAULT_PORT, use_mdns=True):
     ensure_admin_exists()
     os.environ["LANBOX_PORT"] = str(port)
-    os.environ["LANBOX_HTTPS"] = "1" if use_https else "0"
-    ssl_context = None
-    scheme = "http"
-    if use_https:
-        try:
-            cert_path, key_path = ensure_certificates()
-            ssl_context = build_ssl_context(cert_path, key_path)
-            scheme = "https"
-        except Exception as exc:
-            print(f"HTTPS setup failed ({exc}). Falling back to HTTP.")
-            print("Install cryptography: pip install cryptography")
-            use_https = False
-            os.environ["LANBOX_HTTPS"] = "0"
 
     ip = get_local_ip()
+    scheme = "http"
     zeroconf = None
     if use_mdns:
         zeroconf = register_mdns(port, scheme)
     try:
         print(f"LanBox server starting on {scheme}://{ip}:{port} ({ASYNC_MODE})")
-        if use_https:
-            print("First visit: accept the browser security warning (self-signed cert).")
-            print("Use HTTPS on all devices so Chrome allows notifications.")
         socketio.run(
             app,
             host=host,
             port=port,
             debug=False,
             allow_unsafe_werkzeug=True,
-            ssl_context=ssl_context,
         )
     finally:
         if zeroconf:
@@ -670,11 +644,9 @@ if __name__ == "__main__":
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--no-mdns", action="store_true")
-    parser.add_argument("--no-https", action="store_true", help="Run HTTP only (notifications blocked in Chrome)")
     args = parser.parse_args()
     run_server(
         host=args.host,
         port=args.port,
         use_mdns=not args.no_mdns,
-        use_https=not args.no_https,
     )

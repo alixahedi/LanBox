@@ -6,11 +6,9 @@
     <title>LanBox</title>
 
     <meta name="theme-color" content="#0f172a">
-    <link rel="manifest" href="/manifest.json">
-    <link rel="icon" type="image/png" href="/icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png">
     <link rel="apple-touch-icon" href="/icons/icon-192.png">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="LanBox">
 
     <link rel="stylesheet" href="/style.css">
     <script src="/socket.io.min.js"></script>
@@ -28,13 +26,6 @@
             <button id="usernameSubmit" class="primary-btn" type="button">Continue</button>
         </div>
         <p id="usernameError" class="username-error hidden"></p>
-    </div>
-</div>
-
-<div id="notifBanner" class="notif-banner hidden">
-    <div class="notif-banner-inner">
-        <span id="notifBannerText">Enable system notifications for new files and messages</span>
-        <button id="enableNotifBtn" class="primary-btn notif-btn" type="button">Enable</button>
     </div>
 </div>
 
@@ -75,7 +66,7 @@
     <aside class="sidebar card">
         <div class="card-header">
             <h2>Online</h2>
-            <p>Users on your LAN right now</p>
+            <p>Tap a user to chat — unread private messages show as a badge</p>
         </div>
         <ul id="onlineList" class="online-list">
             <li class="emptyMsg">Connecting…</li>
